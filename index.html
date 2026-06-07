@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Gmail Agent"/>
+  <meta name="theme-color" content="#020817"/>
+  <title>Gmail Agent</title>
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg:       #020817;
+      --surface:  #0f172a;
+      --border:   #1e293b;
+      --muted:    #334155;
+      --subtle:   #475569;
+      --text:     #e2e8f0;
+      --text2:    #94a3b8;
+      --indigo:   #6366f1;
+      --green:    #10b981;
+      --red:      #ef4444;
+      --amber:    #f59e0b;
+      --blue:     #3b82f6;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bot: env(safe-area-inset-bottom);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'DM Sans', sans-serif; overflow: hidden;
+    }
+
+    #app { height: 100dvh; display: flex; flex-direction: column; }
+
+    /* ── Header ── */
+    .header {
+      padding: calc(var(--safe-top) + 16px) 20px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .app-title { font-weight: 700; font-size: 17px; color: #f1f5f9; }
+    .app-sub   { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+    /* ── Screens ── */
+    .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* ── Login screen ── */
+    .login-wrap {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 24px; gap: 32px; text-align: center;
+    }
+    .login-icon { font-size: 64px; }
+    .login-title { font-size: 24px; font-weight: 700; color: #f1f5f9; }
+    .login-sub { font-size: 14px; color: var(--subtle); line-height: 1.6; max-width: 280px; }
+    .btn-google {
+      display: flex; align-items: center; gap: 12px;
+      background: white; color: #1a1a1a; border: none; border-radius: 12px;
+      padding: 14px 24px; font-size: 15px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer; width: 100%;
+      justify-content: center; max-width: 320px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* ── Home screen ── */
+    .scroll-area { flex: 1; overflow-y: auto; padding: 20px 20px calc(var(--safe-bot) + 100px); }
+
+    .section-title {
+      font-size: 11px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 10px; font-family: 'DM Mono', monospace;
+    }
+
+    /* Account card */
+    .account-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .account-email { font-size: 13px; color: var(--text); font-weight: 500; }
+    .account-status { font-size: 11px; color: var(--green); margin-top: 2px; }
+
+    /* Stats row */
+    .stats-row { display: flex; gap: 10px; margin-bottom: 24px; }
+    .stat-card {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 8px; text-align: center;
+    }
+    .stat-icon { font-size: 20px; }
+    .stat-val  { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1.2; margin-top: 2px; }
+    .stat-lbl  { font-size: 10px; color: var(--subtle); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+    /* Limit picker */
+    .limit-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 24px;
+    }
+    .limit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .limit-value  { font-size: 28px; font-weight: 700; color: var(--indigo); font-family: 'DM Mono', monospace; }
+    .limit-sub    { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+    .limit-pills  { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 14px; font-size: 13px; color: var(--subtle);
+      cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+    }
+    .pill.active { background: var(--indigo); border-color: var(--indigo); color: white; font-weight: 600; }
+
+    /* Categories */
+    .categories { margin-bottom: 24px; }
+    .cat-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+    }
+    .cat-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name  { flex: 1; font-size: 13px; color: var(--text2); }
+    .cat-select {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--subtle); font-size: 11px; padding: 4px 6px;
+      font-family: 'DM Sans', sans-serif; cursor: pointer; outline: none;
+    }
+
+    /* Launch button */
+    .fab {
+      position: fixed; bottom: calc(var(--safe-bot) + 24px); left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white; border: none; border-radius: 20px;
+      padding: 18px 48px; font-size: 16px; font-weight: 700;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      box-shadow: 0 8px 32px rgba(99,102,241,0.4);
+      display: flex; align-items: center; gap: 10px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .fab:active { transform: translateX(-50%) scale(0.96); }
+    .fab.running { background: #1e293b; box-shadow: none; border: 1px solid var(--border); }
+
+    /* ── Run screen ── */
+    .run-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #6366f1, #3b82f6); border-radius: 2px; transition: width 0.3s ease; }
+    .run-status { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 8px; }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--indigo);
+      animation: pulse 1s infinite;
+    }
+
+    .log-list { flex: 1; overflow-y: auto; }
+    .log-item {
+      padding: 12px 20px; border-bottom: 1px solid #0a0f1e;
+      display: flex; gap: 10px; align-items: flex-start;
+      animation: fadeIn 0.2s ease;
+    }
+    .log-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .log-subject { font-size: 13px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-meta    { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 600; }
+    .tag-delete  { background: rgba(239,68,68,0.15);  color: var(--red);   }
+    .tag-archive { background: rgba(99,102,241,0.15); color: var(--indigo); }
+    .tag-label   { background: rgba(16,185,129,0.15); color: var(--green); }
+    .tag-ok      { background: rgba(16,185,129,0.1);  color: var(--green); font-size: 9px; }
+    .tag-err     { background: rgba(245,158,11,0.1);  color: var(--amber); font-size: 9px; }
+
+    /* ── Recap screen ── */
+    .recap-wrap { flex: 1; overflow-y: auto; padding: 20px 20px calc(var(--safe-bot) + 80px); }
+    .recap-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .recap-sub   { font-size: 13px; color: var(--subtle); margin-bottom: 24px; }
+
+    .recap-stats { display: flex; gap: 10px; margin-bottom: 24px; }
+
+    .deleted-list-title { font-size: 13px; color: var(--text2); font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .deleted-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .deleted-subject { font-size: 13px; color: var(--text); font-weight: 500; }
+    .deleted-from    { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+    .deleted-reason  { font-size: 11px; color: var(--red); margin-top: 3px; }
+
+    .empty-deleted { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 0; }
+
+    .btn-back {
+      position: fixed; bottom: calc(var(--safe-bot) + 24px); left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface); color: var(--text2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 16px 40px; font-size: 15px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+    }
+
+    @keyframes pulse  { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+    ::-webkit-scrollbar { width: 2px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">✉</div>
+      <div>
+        <div class="app-title">Gmail Agent</div>
+        <div class="app-sub" id="header-sub">non connecté</div>
+      </div>
+    </div>
+    <button id="btn-logout" style="display:none; background:none; border:1px solid #1e293b; border-radius:8px; color:#475569; padding:6px 12px; font-size:12px; cursor:pointer; font-family:'DM Sans',sans-serif;">
+      Déconnexion
+    </button>
+  </div>
+
+  <!-- SCREEN: LOGIN -->
+  <div class="screen active" id="screen-login">
+    <div class="login-wrap">
+      <div class="login-icon">📬</div>
+      <div>
+        <div class="login-title">Gmail Agent</div>
+        <div class="login-sub">Connecte ton compte Google pour que l'agent gère ta boîte automatiquement.</div>
+      </div>
+      <button class="btn-google" id="btn-google">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continuer avec Google
+      </button>
+      <div style="font-size:11px; color:#334155; max-width:260px; line-height:1.6;">
+        L'app demande uniquement l'accès à Gmail pour lire, archiver, étiqueter et supprimer tes emails.
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: HOME -->
+  <div class="screen" id="screen-home">
+    <div class="scroll-area">
+
+      <!-- Account -->
+      <div class="section-title">Compte</div>
+      <div class="account-card">
+        <div class="avatar" id="home-avatar">?</div>
+        <div>
+          <div class="account-email" id="home-email">—</div>
+          <div class="account-status">● Connecté</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="section-title">Statistiques totales</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">🗑️</div>
+          <div class="stat-val" id="stat-deleted" style="color:#ef4444">0</div>
+          <div class="stat-lbl">Supprimés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-val" id="stat-archived" style="color:#6366f1">0</div>
+          <div class="stat-lbl">Archivés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏷️</div>
+          <div class="stat-val" id="stat-labeled" style="color:#10b981">0</div>
+          <div class="stat-lbl">Labélisés</div>
+        </div>
+      </div>
+
+      <!-- Limit -->
+      <div class="section-title">Emails à traiter</div>
+      <div class="limit-card">
+        <div class="limit-header">
+          <div>
+            <div class="limit-value" id="limit-display">50</div>
+            <div class="limit-sub">du plus récent au plus ancien</div>
+          </div>
+        </div>
+        <div class="limit-pills">
+          <div class="pill" data-val="25">25</div>
+          <div class="pill active" data-val="50">50</div>
+          <div class="pill" data-val="100">100</div>
+          <div class="pill" data-val="200">200</div>
+          <div class="pill" data-val="500">500</div>
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div class="section-title">Règles par catégorie</div>
+      <div class="categories" id="categories-list"></div>
+
+    </div>
+
+    <button class="fab" id="btn-run">▶ &nbsp;Lancer l'agent</button>
+  </div>
+
+  <!-- SCREEN: RUN -->
+  <div class="screen" id="screen-run">
+    <div class="run-header">
+      <div class="run-status">
+        <div class="pulse-dot"></div>
+        <span id="run-status-text">Connexion…</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="log-list" id="log-list"></div>
+  </div>
+
+  <!-- SCREEN: RECAP -->
+  <div class="screen" id="screen-recap">
+    <div class="recap-wrap">
+      <div class="recap-title">✅ Run terminé</div>
+      <div class="recap-sub" id="recap-sub">—</div>
+
+      <div class="recap-stats">
+        <div class="stat-card">
+          <div class="stat-icon">🗑️</div>
+          <div class="stat-val" id="recap-deleted" style="color:#ef4444">0</div>
+          <div class="stat-lbl">Supprimés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-val" id="recap-archived" style="color:#6366f1">0</div>
+          <div class="stat-lbl">Archivés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏷️</div>
+          <div class="stat-val" id="recap-labeled" style="color:#10b981">0</div>
+          <div class="stat-lbl">Labélisés</div>
+        </div>
+      </div>
+
+      <div class="deleted-list-title">
+        🗑️ Emails supprimés — <span id="recap-deleted-count">0</span> 
+        <span style="font-weight:400; color:#475569">(vérifie avant de vider la corbeille)</span>
+      </div>
+      <div id="deleted-list"></div>
+    </div>
+    <button class="btn-back" id="btn-back">← Retour</button>
+  </div>
+
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = ""; // même origine (backend sert aussi le frontend)
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  email:      null,
+  limit:      50,
+  stats:      { deleted: 0, archived: 0, labeled: 0 },
+  categories: {
+    "Newsletters":     { color: "#6366f1", icon: "📰", action: "archive" },
+    "Promotions":      { color: "#f59e0b", icon: "🛍️", action: "delete"  },
+    "Travail/Clients": { color: "#10b981", icon: "💼", action: "label"   },
+    "Finances":        { color: "#3b82f6", icon: "💳", action: "label"   },
+    "Réseaux sociaux": { color: "#ec4899", icon: "📱", action: "archive" },
+    "Famille/Amis":    { color: "#f97316", icon: "👨‍👩‍👧", action: "label" },
+    "Spam":            { color: "#ef4444", icon: "🗑️", action: "delete"  },
+  }
+};
+
+// ── Storage helpers ───────────────────────────────────────────────────────────
+function save() {
+  localStorage.setItem("gmail-agent", JSON.stringify({ limit: state.limit, stats: state.stats, categories: state.categories }));
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem("gmail-agent") || "{}");
+    if (d.limit)      state.limit = d.limit;
+    if (d.stats)      state.stats = d.stats;
+    if (d.categories) state.categories = d.categories;
+  } catch {}
+}
+
+// ── Screen routing ────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function checkAuth() {
+  const r = await fetch(API + "/auth/status", { credentials: "include" });
+  const d = await r.json();
+  if (d.connected) {
+    state.email = d.email;
+    renderHome();
+    show("home");
+  } else {
+    show("login");
+  }
+}
+
+document.getElementById("btn-google").onclick = () => {
+  window.location.href = API + "/auth/google";
+};
+document.getElementById("btn-logout").onclick = async () => {
+  await fetch(API + "/auth/logout", { method: "POST", credentials: "include" });
+  state.email = null;
+  document.getElementById("btn-logout").style.display = "none";
+  show("login");
+};
+
+// ── Render home ───────────────────────────────────────────────────────────────
+function renderHome() {
+  // Header
+  document.getElementById("header-sub").textContent = state.email || "—";
+  document.getElementById("btn-logout").style.display = "block";
+
+  // Avatar
+  const av = document.getElementById("home-avatar");
+  av.textContent = (state.email || "?")[0].toUpperCase();
+  av.style.background = `hsl(${(state.email||"a").charCodeAt(0)*9%360},55%,40%)`;
+  document.getElementById("home-email").textContent = state.email || "—";
+
+  // Stats
+  document.getElementById("stat-deleted").textContent  = state.stats.deleted;
+  document.getElementById("stat-archived").textContent = state.stats.archived;
+  document.getElementById("stat-labeled").textContent  = state.stats.labeled;
+
+  // Limit
+  document.getElementById("limit-display").textContent = state.limit;
+  document.querySelectorAll(".pill").forEach(p => {
+    p.classList.toggle("active", parseInt(p.dataset.val) === state.limit);
+  });
+
+  // Categories
+  const list = document.getElementById("categories-list");
+  list.innerHTML = "";
+  for (const [name, cat] of Object.entries(state.categories)) {
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    row.innerHTML = `
+      <div class="cat-dot" style="background:${cat.color}"></div>
+      <span class="cat-name">${cat.icon} ${name}</span>
+      <select class="cat-select" data-cat="${name}">
+        <option value="label"   ${cat.action==="label"  ?"selected":""}>label</option>
+        <option value="archive" ${cat.action==="archive"?"selected":""}>archive</option>
+        <option value="delete"  ${cat.action==="delete" ?"selected":""}>suppr.</option>
+      </select>`;
+    list.appendChild(row);
+  }
+  list.querySelectorAll("select").forEach(sel => {
+    sel.onchange = () => {
+      state.categories[sel.dataset.cat].action = sel.value;
+      save();
+    };
+  });
+}
+
+// ── Pill clicks ───────────────────────────────────────────────────────────────
+document.querySelectorAll(".pill").forEach(p => {
+  p.onclick = () => {
+    state.limit = parseInt(p.dataset.val);
+    save();
+    renderHome();
+  };
+});
+
+// ── Run agent ─────────────────────────────────────────────────────────────────
+document.getElementById("btn-run").onclick = startRun;
+
+async function startRun() {
+  const logList = document.getElementById("log-list");
+  logList.innerHTML = "";
+  document.getElementById("progress-bar").style.width = "0%";
+  document.getElementById("run-status-text").textContent = "Connexion…";
+  show("run");
+
+  const url = `${API}/agent/run?limit=${state.limit}`;
+  const es  = new EventSource(url, { withCredentials: true });
+  let total = 0;
+
+  es.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+
+    if (d.type === "info") {
+      if (d.total) total = d.total;
+      document.getElementById("run-status-text").textContent = d.msg;
+      addLogInfo(logList, d.msg);
+    }
+
+    if (d.type === "email") {
+      if (d.total) total = d.total;
+      const pct = total > 0 ? Math.round((d.index / total) * 100) : 0;
+      document.getElementById("progress-bar").style.width = pct + "%";
+      document.getElementById("run-status-text").textContent = `${d.index}/${total} emails (${pct}%)`;
+      addLogEmail(logList, d);
+    }
+
+    if (d.type === "done") {
+      es.close();
+      state.stats.deleted  += d.stats.deleted;
+      state.stats.archived += d.stats.archived;
+      state.stats.labeled  += d.stats.labeled;
+      save();
+      renderRecap(d.stats, d.deleted);
+      show("recap");
+    }
+
+    if (d.type === "error") {
+      es.close();
+      addLogInfo(logList, "❌ " + d.msg);
+    }
+  };
+
+  es.onerror = () => {
+    es.close();
+    addLogInfo(logList, "❌ Connexion perdue");
+  };
+}
+
+function addLogInfo(list, msg) {
+  const el = document.createElement("div");
+  el.className = "log-item";
+  el.innerHTML = `<span class="log-icon">ℹ️</span><div><div class="log-subject">${msg}</div></div>`;
+  list.appendChild(el);
+  list.scrollTop = list.scrollHeight;
+}
+
+function addLogEmail(list, d) {
+  const actionTag = {
+    delete:  `<span class="tag tag-delete">suppr.</span>`,
+    archive: `<span class="tag tag-archive">archive</span>`,
+    label:   `<span class="tag tag-label">label</span>`,
+  }[d.action] || "";
+  const appliedTag = d.applied
+    ? `<span class="tag tag-ok">✓ appliqué</span>`
+    : `<span class="tag tag-err">⚠ erreur</span>`;
+  const labelInfo = d.action === "label" && d.labelName ? `<span style="color:#64748b">→ ${d.labelName}</span>` : "";
+
+  const el = document.createElement("div");
+  el.className = "log-item";
+  el.innerHTML = `
+    <span class="log-icon">${d.action==="delete"?"🗑️":d.action==="archive"?"📦":"🏷️"}</span>
+    <div style="flex:1;min-width:0">
+      <div class="log-subject">${d.subject}</div>
+      <div class="log-meta">${actionTag}${labelInfo}${appliedTag}${d.reason?`<span>${d.reason}</span>`:""}</div>
+    </div>`;
+  list.appendChild(el);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ── Recap ─────────────────────────────────────────────────────────────────────
+function renderRecap(stats, deleted) {
+  document.getElementById("recap-sub").textContent =
+    `${stats.total} emails traités · ${new Date().toLocaleString("fr-FR")}`;
+  document.getElementById("recap-deleted").textContent  = stats.deleted;
+  document.getElementById("recap-archived").textContent = stats.archived;
+  document.getElementById("recap-labeled").textContent  = stats.labeled;
+  document.getElementById("recap-deleted-count").textContent = deleted.length;
+
+  const list = document.getElementById("deleted-list");
+  list.innerHTML = "";
+  if (deleted.length === 0) {
+    list.innerHTML = `<div class="empty-deleted">Aucun email supprimé dans ce run 🎉</div>`;
+    return;
+  }
+  for (const d of deleted) {
+    const el = document.createElement("div");
+    el.className = "deleted-item";
+    el.innerHTML = `
+      <div class="deleted-subject">${d.subject}</div>
+      <div class="deleted-from">${d.from}</div>
+      ${d.reason ? `<div class="deleted-reason">${d.reason}</div>` : ""}`;
+    list.appendChild(el);
+  }
+}
+
+document.getElementById("btn-back").onclick = () => {
+  renderHome();
+  show("home");
+};
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+load();
+checkAuth();
+
+// Handle redirect after OAuth
+if (location.search.includes("connected=1")) {
+  history.replaceState({}, "", "/");
+}
+</script>
+</body>
+</html>
