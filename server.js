@@ -210,10 +210,10 @@ Règles:
 app.get("/health", (_, res) => res.json({ ok: true }));
 
 // Serve frontend
-app.use(express.static(path.join(__dirname, '../frontend/public')));
+app.use(express.static(__dirname));
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/auth') && !req.path.startsWith('/agent') && !req.path.startsWith('/health'))
-    res.sendFile(path.join(__dirname, '../frontend/public/index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => console.log(`Gmail Agent backend running on port ${PORT}`));
